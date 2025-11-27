@@ -1,0 +1,74 @@
+services:
+  database-bankr:
+    image: postgres:15-alpine
+    container_name: database-bankr
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - bankr-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend-bankr:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: backend-bankr
+    restart: unless-stopped
+    depends_on:
+      database-bankr:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@database-bankr:5432/${POSTGRES_DB}?schema=public
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      JWT_ACCESS_EXPIRY: ${JWT_ACCESS_EXPIRY}
+      JWT_REFRESH_EXPIRY: ${JWT_REFRESH_EXPIRY}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      NODE_ENV: ${NODE_ENV}
+      PORT: 3002
+      FRONTEND_URL: ${FRONTEND_URL}
+    ports:
+      - "3002:3002"
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+    networks:
+      - bankr-network
+    command: npm run dev
+
+  frontend-bankr:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: frontend-bankr
+    restart: unless-stopped
+    depends_on:
+      - backend-bankr
+    environment:
+      VITE_API_URL: http://backend-bankr:3002
+    ports:
+      - "5174:5173"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - bankr-network
+    command: npm run dev
+
+volumes:
+  postgres_data:
+
+networks:
+  bankr-network:
+    driver: bridge

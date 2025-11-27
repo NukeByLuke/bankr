@@ -1,0 +1,277 @@
+// This is your Prisma schema file for Bankr
+// Learn more: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User roles enumeration
+enum Role {
+  FREE
+  PREMIUM
+  ADMIN
+}
+
+// Transaction types
+enum TransactionType {
+  INCOME
+  EXPENSE
+  TRANSFER
+}
+
+// Transaction categories
+enum TransactionCategory {
+  FOOD
+  TRANSPORT
+  TRANSPORTATION
+  SHOPPING
+  ENTERTAINMENT
+  BILLS
+  UTILITIES
+  HEALTHCARE
+  EDUCATION
+  HOUSING
+  SALARY
+  BUSINESS
+  FREELANCE
+  INVESTMENT
+  INVESTMENTS
+  TRAVEL
+  GIFTS
+  TECHNOLOGY
+  LIFESTYLE
+  CLOTHING
+  CASH
+  SAVINGS
+  OTHER
+}
+
+// Budget period types
+enum BudgetPeriod {
+  WEEKLY
+  MONTHLY
+  YEARLY
+}
+
+// Subscription frequency
+enum SubscriptionFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+// Payment frequency for scheduled payments
+enum PaymentFrequency {
+  DAILY
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+  QUARTERLY
+  YEARLY
+}
+
+// Goal types
+enum GoalType {
+  SAVINGS
+  EXPENSE
+}
+
+// User model with authentication and profile
+model User {
+  id                String             @id @default(uuid())
+  email             String             @unique
+  passwordHash      String
+  firstName         String?
+  lastName          String?
+  role              Role               @default(FREE)
+  emailVerified     Boolean            @default(false)
+  isActive          Boolean            @default(true)
+  refreshToken      String?            @db.Text
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  
+  // Relations
+  transactions      Transaction[]
+  budgets           Budget[]
+  goals             Goal[]
+  scheduledPayments ScheduledPayment[]
+  activityLogs      ActivityLog[]
+  
+  @@map("users")
+}
+
+// Transaction model
+model Transaction {
+  id          String              @id @default(uuid())
+  userId      String
+  type        TransactionType
+  category    TransactionCategory
+  amount      Float
+  description String?
+  date        DateTime            @default(now())
+  merchant    String?
+  notes       String?             @db.Text
+  isRecurring Boolean             @default(false)
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+  
+  // Relations
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([date])
+  @@index([type])
+  @@index([category])
+  @@map("transactions")
+}
+
+// Budget model
+model Budget {
+  id          String         @id @default(uuid())
+  userId      String
+  category    TransactionCategory
+  amount      Float
+  period      BudgetPeriod
+  startDate   DateTime
+  endDate     DateTime?
+  alertAt     Float?         // Alert when percentage of budget is reached (0-100)
+  isActive    Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  
+  // Relations
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([category])
+  @@map("budgets")
+}
+
+// Savings Goal model
+model Goal {
+  id            String    @id @default(uuid())
+  userId        String
+  name          String
+  type          GoalType  @default(SAVINGS)
+  color         String?
+  targetAmount  Float
+  currentAmount Float     @default(0)
+  startDate     DateTime  @default(now())
+  endDate       DateTime?
+  deadline      DateTime? // Keep for backward compatibility
+  description   String?   @db.Text
+  isCompleted   Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@map("goals")
+}
+
+// Loan model
+model Loan {
+  id        String   @id @default(cuid())
+  name      String
+  type      String
+  amount    Float
+  color     String?
+  notes     String?
+  startDate DateTime @default(now())
+  endDate   DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("loans")
+}
+
+// Subscription model
+model Subscription {
+  id           String   @id @default(cuid())
+  title        String
+  category     String?
+  amount       Float
+  periodLength Int
+  periodType   String
+  nextPayment  DateTime @default(now())
+  active       Boolean  @default(true)
+  notes        String?
+  color        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@map("subscriptions")
+}
+
+// Scheduled transaction model
+model Scheduled {
+  id         String   @id @default(cuid())
+  title      String
+  amount     Float
+  category   String?
+  type       String   // "income" or "expense"
+  date       DateTime
+  repeatType String?  // "none", "daily", "weekly", "monthly", "yearly"
+  repeatEvery Int?    // e.g. every 1 month
+  color      String?
+  notes      String?
+  status     String   @default("upcoming") // "upcoming", "overdue", "done"
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("scheduled")
+}
+
+// Scheduled Payment model
+model ScheduledPayment {
+  id          String           @id @default(uuid())
+  userId      String
+  name        String
+  amount      Float
+  frequency   PaymentFrequency
+  nextDate    DateTime
+  endDate     DateTime?
+  category    TransactionCategory @default(BILLS)
+  isActive    Boolean          @default(true)
+  autoExecute Boolean          @default(false)
+  description String?          @db.Text
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  
+  // Relations
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([nextDate])
+  @@map("scheduled_payments")
+}
+
+// Activity Log model for audit trail
+model ActivityLog {
+  id        String   @id @default(uuid())
+  userId    String
+  action    String   // e.g., "CREATED_TRANSACTION", "UPDATED_BUDGET"
+  entity    String   // e.g., "Transaction", "Budget"
+  entityId  String?
+  details   String?  @db.Text
+  ipAddress String?
+  userAgent String?  @db.Text
+  createdAt DateTime @default(now())
+  
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@index([createdAt])
+  @@map("activity_logs")
+}

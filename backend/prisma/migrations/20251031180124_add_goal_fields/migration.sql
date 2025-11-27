@@ -1,0 +1,8 @@
+-- CreateEnum
+CREATE TYPE "GoalType" AS ENUM ('SAVINGS', 'EXPENSE');
+
+-- AlterTable
+ALTER TABLE "goals" ADD COLUMN     "color" TEXT,
+ADD COLUMN     "endDate" TIMESTAMP(3),
+ADD COLUMN     "startDate" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ADD COLUMN     "type" "GoalType" NOT NULL DEFAULT 'SAVINGS';
