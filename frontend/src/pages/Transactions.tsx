@@ -1,2 +1,2 @@
-// Re-export the comprehensive Transactions page
+// transactions page
 export { default } from './Transactions/index';

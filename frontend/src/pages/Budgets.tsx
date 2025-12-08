@@ -1,2 +1,2 @@
-// Re-export the comprehensive Budgets page
+// budgets page
 export { default } from './Budgets/index';
