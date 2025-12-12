@@ -35,7 +35,34 @@ export default function Budgets() {
   });
 
   const handleAddBudget = (data: any) => {
-    addBudgetMutation.mutate(data);
+    // Transform frontend form data to match backend API schema
+    const budgetData = {
+      category: data.categories[0], // Backend expects single category
+      amount: data.amount,
+      period: data.period === 'DAILY' ? 'WEEKLY' : data.period, // Backend doesn't support DAILY
+      startDate: new Date(data.startDate).toISOString(), // Backend expects ISO datetime
+      alertAt: 80, // Default alert threshold
+    };
+    addBudgetMutation.mutate(budgetData);
+  };
+
+  // Delete budget mutation
+  const deleteBudgetMutation = useMutation({
+    mutationFn: async (id: string) => {
+      await apiClient.delete(`/budgets/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['budgets'] });
+    },
+    onError: (error: any) => {
+      console.error('Failed to delete budget:', error);
+    },
+  });
+
+  const handleDeleteBudget = (id: string) => {
+    if (window.confirm('Are you sure you want to delete this budget?')) {
+      deleteBudgetMutation.mutate(id);
+    }
   };
 
   const budgets = data || [];
@@ -107,7 +134,10 @@ export default function Budgets() {
                     className="animate-[fadeInUp_0.4s_ease-out]"
                     style={{ animationDelay: `${index * 50}ms` }}
                   >
-                    <BudgetCard budget={budget} />
+                    <BudgetCard 
+                      budget={budget} 
+                      onDelete={handleDeleteBudget}
+                    />
                   </div>
                 ))}
               </div>
