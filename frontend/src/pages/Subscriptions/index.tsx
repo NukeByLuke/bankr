@@ -58,7 +58,8 @@ export default function Subscriptions() {
     queryKey: ['subscriptions'],
     queryFn: async () => {
       const response = await apiClient.get('/subscriptions');
-      return response.data as SubscriptionRecord[];
+      // Backend returns array directly or wrapped in data property
+      return (response.data?.data || response.data || []) as SubscriptionRecord[];
     },
   });
 

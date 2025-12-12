@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Plus } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/utils/api';
 import GoalCard from './GoalCard';
 import AddGoalModal from './AddGoalModal';
@@ -21,6 +21,8 @@ export interface Goal {
 
 export default function Goals() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
     queryKey: ['goals'],
@@ -31,6 +33,26 @@ export default function Goals() {
   });
 
   const goals: Goal[] = data?.data || [];
+
+  const deleteGoalMutation = useMutation({
+    mutationFn: async (goalId: string) => {
+      await apiClient.delete(`/goals/${goalId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['goals'] });
+    },
+  });
+
+  const handleDeleteGoal = (goalId: string) => {
+    if (window.confirm('Are you sure you want to delete this goal?')) {
+      deleteGoalMutation.mutate(goalId);
+    }
+  };
+
+  const handleEditGoal = (goalId: string) => {
+    setEditingGoalId(goalId);
+    setIsModalOpen(true);
+  };
 
   return (
     <div className="min-h-screen">
@@ -72,6 +94,8 @@ export default function Goals() {
                 key={goal.id}
                 goal={goal}
                 style={{ animationDelay: `${(index + 1) * 0.1}s` }}
+                onEdit={handleEditGoal}
+                onDelete={handleDeleteGoal}
               />
             ))}
           </div>
@@ -88,7 +112,7 @@ export default function Goals() {
       </div>
 
       {/* Add Goal Modal */}
-      <AddGoalModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <AddGoalModal isOpen={isModalOpen} onClose={() => { setIsModalOpen(false); setEditingGoalId(null); }} />
     </div>
   );
 }

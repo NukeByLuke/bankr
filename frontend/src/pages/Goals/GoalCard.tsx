@@ -1,4 +1,5 @@
-import { Target, TrendingUp, Calendar, Edit2 } from 'lucide-react';
+import { useState } from 'react';
+import { Target, TrendingUp, Calendar, Edit2, MoreVertical, Pencil, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useAccentStore } from '@/store/accentStore';
 import { Goal } from './index';
@@ -6,9 +7,12 @@ import { Goal } from './index';
 interface GoalCardProps {
   goal: Goal;
   style?: React.CSSProperties;
+  onEdit?: (id: string) => void;
+  onDelete?: (id: string) => void;
 }
 
-export default function GoalCard({ goal, style }: GoalCardProps) {
+export default function GoalCard({ goal, style, onEdit, onDelete }: GoalCardProps) {
+  const [showMenu, setShowMenu] = useState(false);
   const progress = Math.min((goal.currentAmount / goal.targetAmount) * 100, 100);
   const remaining = goal.targetAmount - goal.currentAmount;
   const accent = useAccentStore((state) => state.accentColor);
@@ -45,9 +49,33 @@ export default function GoalCard({ goal, style }: GoalCardProps) {
             <p className="text-xs text-gray-500 capitalize">{goal.type.toLowerCase()}</p>
           </div>
         </div>
-        <button className="opacity-0 group-hover:opacity-100 p-2 hover:bg-white/5 rounded-lg transition-all duration-300">
-          <Edit2 className="w-4 h-4 text-gray-400" />
-        </button>
+        <div className="relative">
+          <button 
+            onClick={() => setShowMenu(!showMenu)}
+            className="opacity-0 group-hover:opacity-100 p-2 hover:bg-white/5 rounded-lg transition-all duration-300"
+          >
+            <MoreVertical className="w-4 h-4 text-gray-400" />
+          </button>
+          
+          {showMenu && (
+            <div className="absolute right-0 top-10 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-xl z-50 min-w-[120px] overflow-hidden">
+              <button
+                onClick={() => { onEdit?.(goal.id); setShowMenu(false); }}
+                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-300 hover:bg-white/10 transition-colors"
+              >
+                <Pencil className="w-4 h-4" />
+                Edit
+              </button>
+              <button
+                onClick={() => { onDelete?.(goal.id); setShowMenu(false); }}
+                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 transition-colors"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Progress Section */}

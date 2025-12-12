@@ -47,7 +47,8 @@ export default function Calendar() {
           endDate: calendarEnd.toISOString(),
         },
       });
-      return response.data as CalendarEvent[];
+      // Backend returns array directly or wrapped in data property
+      return (response.data?.data || response.data || []) as CalendarEvent[];
     },
   });
 
